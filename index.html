@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<title>ニコ生ゲーム　データ検索ツール</title>
+	<style>
+		body { 
+			margin: 0 auto; 
+			width: 80%; 
+			font-family: Arial, sans-serif; 
+			background-color: #e0e0e0;
+		}
+		table { 
+			width: 100%; 
+			border-collapse: collapse; 
+			margin-top: 20px; 
+			margin-bottom: 50px; 
+		}
+		th, td { 
+			border: 1px solid #999; 
+			padding: 8px; 
+			text-align: left; 
+		}
+		th { 
+			background-color: #f4f4f4; 
+		}
+		#data-input { 
+			width: 100%; 
+			height: 150px; 
+			margin: 10px 0; 
+		}
+		#url-input { 
+			width: 60%; 
+			margin-right: 10px; 
+			padding: 5px; 
+		}
+		#generated-url { 
+			display: block; 
+			margin-top: 10px; 
+		}
+		#warning-message { 
+			color: red; 
+			font-weight: bold; 
+			display: none; 
+		}
+		#instructions { 
+			margin: 20px 0; 
+			padding: 10px; 
+			background-color: #f9f9f9; 
+			border: 1px solid #ccc; 
+			border-radius: 8px;
+		}
+		.section { 
+			margin-bottom: 30px; 
+		}
+	</style>
+</head>
+<body>
+	<h1>ニコ生ゲーム　データ検索ツール</h1>
+	<div id="instructions">
+		<h2>使い方</h2>
+		<ol>
+			<li>ゲームの検索ワードを入力しURLを生成します。</li>
+			<li>生成されたURLを開き、全データをコピーします。</li>
+			<li>データを貼り付けると起動回数が表示されます。</li>
+		</ol>
+	</div>
+	<div class="section">
+		<input type="text" id="url-input" placeholder="キーワードを入力してください">
+		<button onclick="generateUrl()">URL生成</button>
+		<a id="generated-url" target="_blank">生成されたURL</a>
+	</div>
+	<div class="section">
+		<textarea id="data-input" placeholder="ここにデータをペーストまたはドラッグ＆ドロップしてください"></textarea>
+		<p id="warning-message">データが間違っています。</p>
+	</div>
+	<table>
+		<thead>
+			<tr>
+				<th>タイトル</th>
+				<th>ID</th>
+				<th>起動回数</th>
+				<th>更新日時</th>
+			</tr>
+		</thead>
+		<tbody id="data-table-body"></tbody>
+	</table>
+	<script>
+		const dataInput = document.getElementById('data-input');
+		dataInput.addEventListener('paste', handlePaste);
+		dataInput.addEventListener('drop', handleDrop);
+		dataInput.addEventListener('dragover', (event) => event.preventDefault());
+		function handlePaste(event) {
+			dataInput.value = '';
+			setTimeout(() => {
+				processData();
+			}, 100);
+		}
+		function handleDrop(event) {
+			event.preventDefault();
+			dataInput.value = ''; // クリア
+			const data = event.dataTransfer.getData('text/plain');
+			if (data) {
+				dataInput.value = data;
+				processData();
+			}
+		}
+		function processData() {
+			const inputData = dataInput.value;
+			const warningMessage = document.getElementById('warning-message');
+			try {
+				const json = JSON.parse(inputData);
+				if (json && json.data && json.data.contents) {
+					renderTable(json.data.contents);
+					warningMessage.style.display = 'none';
+				} else {
+					throw new Error('Invalid JSON structure');
+				}
+			} catch (error) {
+				console.error('Invalid JSON data:', error);
+				warningMessage.style.display = 'block';
+			}
+		}
+		function renderTable(contents) {
+			const tableBody = document.getElementById('data-table-body');
+			tableBody.innerHTML = '';
+			contents.forEach(content => {
+				const jstDate = new Date(content.createdAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+				const row = document.createElement('tr');
+				row.innerHTML = `
+					<td>${content.title}</td>
+					<td>${content.id}</td>
+					<td>${content.launchCount}</td>
+					<td>${jstDate}</td>
+				`;
+				tableBody.appendChild(row);
+			});
+		}
+		function generateUrl() {
+			const keyword = document.getElementById('url-input').value;
+			const baseUrl = 'https://services-eapi.spi.nicovideo.jp/v1/services/akasha/services/content/contents?programID=lv346141558&keyword=';
+			const queryParams = '&sortKey=id&sortOrder=DESC&limit=50';
+			const generatedUrl = baseUrl + encodeURIComponent(keyword) + queryParams;
+			const generatedUrlElement = document.getElementById('generated-url');
+			generatedUrlElement.href = generatedUrl;
+			generatedUrlElement.textContent = `生成されたURL: ${generatedUrl}`;
+		}
+	</script>
+</body>
+</html>
